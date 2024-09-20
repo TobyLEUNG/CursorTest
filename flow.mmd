@@ -1,0 +1,128 @@
+%% flow.mmd
+%% 高層次整體流程圖
+graph TB
+    A["主頁面 Index.html"] --> B["遊戲管理模組 GameManager.js"]
+    
+    B --> C["貪食蛇模組 Snake.js"]
+    B --> D["俄羅斯方塊模組 Tetris.js"]
+    B --> E["渲染模組 Render.js"]
+    B --> F["計分板模組 Scoreboard.js"]
+    B --> G["輸入處理模組 InputHandler.js"]
+    B --> H["工具模組 Utility.js"]
+    
+    C -->|"吃到水果"| B
+    D -->|"行消除或方塊固定"| B
+    G --> C["控制貪食蛇"]
+    G --> D["控制俄羅斯方塊"]
+    E --> B["獲取遊戲狀態進行渲染"]
+    F --> B["更新和顯示分數"]
+    
+    %% 工具模組被其他模組調用
+    C -.-> H["使用工具函數"]
+    D -.-> H["使用工具函數"]
+    E -.-> H["使用工具函數"]
+    F -.-> H["使用工具函數"]
+    G -.-> H["使用工具函數"]
+
+%% 遊戲管理模組流程圖
+graph TB
+    GM["遊戲管理模組 GameManager.js"]
+    GM --> GM1["初始化所有模組"]
+    GM --> GM2["管理遊戲狀態"]
+    GM --> GM3["模式切換"]
+    GM --> GM4["處理遊戲重啟"]
+    GM --> GM5["協調更新循環"]
+    
+    GM1 --> C1["初始化貪食蛇模組 Snake.js"]
+    GM1 --> D1["初始化俄羅斯方塊模組 Tetris.js"]
+    GM1 --> E1["初始化渲染模組 Render.js"]
+    GM1 --> F1["初始化計分板模組 Scoreboard.js"]
+    GM1 --> G1["初始化輸入處理模組 InputHandler.js"]
+    GM1 --> H1["初始化工具模組 Utility.js"]
+    
+    GM2 --> GM6["維護當前遊戲模式"]
+    GM3 --> GM7["根據模組通知切換模式"]
+    GM4 --> GM8["重置所有模組狀態"]
+    GM5 --> GM9["啟動遊戲循環"]
+
+%% 貪食蛇模組流程圖
+graph TB
+    Snake["貪食蛇模組 Snake.js"]
+    Snake --> S1["初始化蛇的位置和方向"]
+    Snake --> S2["處理蛇的移動"]
+    Snake --> S3["檢測碰撞"]
+    Snake --> S4["吃到水果"]
+    Snake --> S5["增長蛇身"]
+    Snake --> S6["通知遊戲管理模組"]
+    
+    S2 --> S21["根據方向更新位置"]
+    S3 -->|"碰到邊界或自己"| S31["通知遊戲結束"]
+    S4 -->|"吃到水果"| S41["觸發模式切換"]
+    S5 --> S51["增加蛇身長度"]
+
+%% 俄羅斯方塊模組流程圖
+graph TB
+    Tetris["俄羅斯方塊模組 Tetris.js"]
+    Tetris --> T1["初始化方塊和網格"]
+    Tetris --> T2["生成新方塊"]
+    Tetris --> T3["處理方塊移動"]
+    Tetris --> T4["處理方塊旋轉"]
+    Tetris --> T5["檢測行消除"]
+    Tetris --> T6["更新分數"]
+    Tetris --> T7["通知遊戲管理模組"]
+    
+    T3 --> T31["左移"]
+    T3 --> T32["右移"]
+    T3 --> T33["下移"]
+    T4 --> T41["旋轉方塊"]
+    T5 --> T51["檢查滿行"]
+    T5 --> T52["消除滿行"]
+    T6 --> T61["更新計分板"]
+
+%% 渲染模組流程圖
+graph TB
+    Render["渲染模組 Render.js"]
+    Render --> R1["清除畫布"]
+    Render --> R2["根據模式繪製元素"]
+    Render --> R3["繪製貪食蛇"]
+    Render --> R4["繪製水果"]
+    Render --> R5["繪製俄羅斯方塊"]
+    Render --> R6["更新畫面"]
+    
+    R2 -->|"貪食蛇模式"| R3 & R4
+    R2 -->|"俄羅斯方塊模式"| R5
+    R6 -->|"呼叫"| GM["遊戲管理模組"]
+
+%% 計分板模組流程圖
+graph TB
+    Scoreboard["計分板模組 Scoreboard.js"]
+    Scoreboard --> SC1["初始化分數"]
+    Scoreboard --> SC2["更新貪食蛇分數"]
+    Scoreboard --> SC3["更新俄羅斯方塊分數"]
+    Scoreboard --> SC4["計算總分"]
+    Scoreboard --> SC5["顯示分數"]
+    
+    SC2 --> SC21["貪食蛇得分增加"]
+    SC3 --> SC31["俄羅斯方塊得分增加"]
+    SC4 --> SC41["計算貪食蛇 + 俄羅斯方塊總分"]
+    SC5 --> SC51["更新顯示區域"]
+
+%% 輸入處理模組流程圖
+graph TB
+    InputHandler["輸入處理模組 InputHandler.js"]
+    InputHandler --> I1["監聽鍵盤事件"]
+    InputHandler --> I2["根據模式處理輸入"]
+    InputHandler --> I3["轉發控制指令"]
+    
+    I2 -->|"貪食蛇模式"| I21["改變蛇的方向"]
+    I2 -->|"俄羅斯方塊模式"| I22["移動或旋轉方塊"]
+
+%% 工具模組流程圖
+graph TB
+    Utility["工具模組 Utility.js"]
+    Utility --> U1["隨機數生成器"]
+    Utility --> U2["深拷貝函數"]
+    Utility --> U3["其他通用工具函數"]
+    
+    %% 模組整合說明
+    %% 每個模組通過遊戲管理模組進行互動，以保持低耦合性和高內聚性

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貪食蛇與俄羅斯方塊</title>
+    <link rel="stylesheet" href="Style.css">
+</head>
+<body>
+    <div id="game-container">
+        <div id="controls">
+            <label for="speed-select">速度: </label>
+            <select id="speed-select">
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+            </select>
+            <!-- <button id="fit-to-window">FIT to WINDOW</button> -->
+        </div>
+        <canvas id="game-canvas" width="400" height="600"></canvas> <!-- 設定固定寬度和高度 -->
+        <div id="scoreboard">
+            <div>貪食蛇得分: <span id="snake-score">0</span></div>
+            <div>俄羅斯方塊得分: <span id="tetris-score">0</span></div>
+            <div>總得分: <span id="total-score">0</span></div>
+        </div>
+    </div>
+    <script src="utility.js"></script>
+    <script src="inputHandler.js"></script>
+    <script src="scoreboard.js"></script>
+    <script src="render.js"></script>
+    <script src="snake.js"></script>
+    <script src="tetris.js"></script>
+    <script src="gameManager.js"></script>
+</body>
+</html>

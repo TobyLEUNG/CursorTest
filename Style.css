@@ -1,0 +1,33 @@
+body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f0f0f0;
+}
+
+#game-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 400px; /* 設定容器寬度為畫布寬度 */
+    height: 600px; /* 設定容器高度為畫布高度 */
+}
+
+#controls {
+    margin-bottom: 10px;
+}
+
+#game-canvas {
+    border: 2px solid #000;
+    /* 移除寬度和高度的百分比設定，使用固定尺寸 */
+    width: 400px;
+    height: 600px;
+}
+
+#scoreboard {
+    margin-top: 20px;
+    font-size: 18px;
+    text-align: center;
+}

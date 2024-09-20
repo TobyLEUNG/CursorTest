@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>貪食蛇與俄羅斯方塊</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 400px;
+            height: 600px;
+        }
+
+        #controls {
+            margin-bottom: 10px;
+        }
+
+        #game-canvas {
+            border: 2px solid #000;
+            width: 400px;
+            height: 600px;
+        }
+
+        #scoreboard {
+            margin-top: 20px;
+            font-size: 18px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="controls">
+            <label for="speed-select">速度: </label>
+            <select id="speed-select">
+                <option value="0.5">0.5x</option>
+                <option value="1" selected>1x</option>
+                <option value="1.5">1.5x</option>
+                <option value="2">2x</option>
+            </select>
+        </div>
+        <canvas id="game-canvas" width="400" height="600"></canvas>
+        <div id="scoreboard">
+            <div>貪食蛇得分: <span id="snake-score">0</span></div>
+            <div>俄羅斯方塊得分: <span id="tetris-score">0</span></div>
+            <div>總得分: <span id="total-score">0</span></div>
+        </div>
+    </div>
+
+    <script>
+        // utility.js
+        function getRandomShape() {
+            const shapes = [
+                [[1, 1, 1, 1]], // I
+                [[1, 1, 1], [0, 1, 0]], // T
+                [[1, 1], [1, 1]], // O
+                [[0, 1, 1], [1, 1, 0]], // S
+                [[1, 1, 0], [0, 1, 1]] // Z
+            ];
+            return shapes[Math.floor(Math.random() * shapes.length)];
+        }
+
+        function getRandomColor() {
+            const colors = [
+                '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF',
+                '#FF8E0D', '#FFE138', '#3877FF'
+            ];
+            return colors[Math.floor(Math.random() * colors.length)];
+        }
+
+        // snake.js
+        class Snake {
+            constructor(gameManager) {
+                this.gameManager = gameManager;
+                this.moveInterval = 1000;
+                this.moveCounter = 0;
+                this.reset();
+            }
+
+            reset() {
+                this.body = [{ x: 5, y: 5 }];
+                this.direction = 'right';
+                this.nextDirection = 'right';
+                console.log("Snake reset, initial direction:", this.direction);
+            }
+
+            update(deltaTime) {
+                this.moveCounter += deltaTime;
+                if (this.moveCounter < this.moveInterval / this.gameManager.speed) {
+                    return;
+                }
+                this.moveCounter = 0;
+
+                this.direction = this.nextDirection;
+
+                console.log("Snake updating, current direction:", this.direction);
+                const head = { ...this.body[0] };
+                switch (this.direction) {
+                    case 'up': head.y--; break;
+                    case 'down': head.y++; break;
+                    case 'left': head.x--; break;
+                    case 'right': head.x++; break;
+                }
+                this.body.unshift(head);
+
+                if (this.checkFruitCollision(head)) {
+                    console.log("Snake ate fruit");
+                    this.gameManager.scoreboard.addSnakeScore(10);
+                    this.gameManager.generateFruit();
+                    this.gameManager.switchMode();
+                } else {
+                    this.body.pop();
+                }
+
+                if (this.checkBoundaryCollision(head) || this.checkSelfCollision(head)) {
+                    console.log("Snake collision detected");
+                    this.gameManager.restart();
+                }
+            }
+
+            checkFruitCollision(head) {
+                return head.x === this.gameManager.fruit.x && head.y === this.gameManager.fruit.y;
+            }
+
+            checkBoundaryCollision(head) {
+                return head.x < 0 || head.x >= this.gameManager.canvas.width / this.gameManager.gridSize ||
+                       head.y < 0 || head.y >= this.gameManager.canvas.height / this.gameManager.gridSize;
+            }
+
+            checkSelfCollision(head) {
+                return this.body.slice(1).some(segment => segment.x === head.x && segment.y === head.y);
+            }
+
+            changeDirection(newDirection) {
+                const opposites = { up: 'down', down: 'up', left: 'right', right: 'left' };
+                if (newDirection !== opposites[this.direction]) {
+                    this.nextDirection = newDirection;
+                    console.log("Snake direction changed to:", newDirection);
+                } else {
+                    console.log("Invalid direction change attempted:", newDirection);
+                }
+            }
+        }
+
+        // tetris.js
+        class Tetris {
+            constructor(gameManager) {
+                this.gameManager = gameManager;
+                this.grid = [];
+                this.currentPiece = null;
+                this.dropCounter = 0;
+                this.dropInterval = 1000;
+                this.colors = [
+                    '#FF0D72', '#0DC2FF', '#0DFF72', '#F538FF',
+                    '#FF8E0D', '#FFE138', '#3877FF'
+                ];
+                this.pieceCount = 0;
+                this.reset();
+            }
+
+            reset() {
+                const gridWidth = this.gameManager.gridWidth;
+                const gridHeight = this.gameManager.gridHeight;
+                this.grid = Array(gridHeight).fill().map(() => Array(gridWidth).fill(0));
+                this.currentPiece = null;
+                this.pieceCount = 0;
+                console.log("Tetris reset");
+                this.generateNewPiece();
+            }
+
+            update(deltaTime) {
+                this.dropCounter += deltaTime;
+                if (this.dropCounter > this.dropInterval / this.gameManager.speed) {
+                    this.moveDown();
+                    this.dropCounter = 0;
+                }
+            }
+
+            moveDown() {
+                if (this.canMove(0, 1)) {
+                    this.currentPiece.y++;
+                } else {
+                    this.placePiece();
+                    this.clearLines();
+                    this.pieceCount++;
+                    this.gameManager.switchMode();
+                }
+            }
+
+            generateNewPiece() {
+                const shapes = [
+                    [[1, 1, 1, 1]], // I
+                    [[1, 1, 1], [0, 1, 0]], // T
+                    [[1, 1], [1, 1]], // O
+                    [[0, 1, 1], [1, 1, 0]], // S
+                    [[1, 1, 0], [0, 1, 1]], // Z
+                    [[1, 1, 1], [1, 0, 0]], // L
+                    [[1, 1, 1], [0, 0, 1]]  // J
+                ];
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                const color = this.colors[Math.floor(Math.random() * this.colors.length)];
+                this.currentPiece = {
+                    shape,
+                    color,
+                    x: Math.floor((this.gameManager.gridWidth / 2) - (Math.floor(shape[0].length / 2))),
+                    y: 0
+                };
+
+                if (!this.canMove(0, 0)) {
+                    this.gameManager.gameOver();
+                    return;
+                }
+
+                console.log("New piece generated:", this.currentPiece);
+            }
+
+            moveLeft() {
+                if (this.canMove(-1, 0)) {
+                    this.currentPiece.x--;
+                    console.log("Piece moved left");
+                }
+            }
+
+            moveRight() {
+                if (this.canMove(1, 0)) {
+                    this.currentPiece.x++;
+                    console.log("Piece moved right");
+                }
+            }
+
+            rotate() {
+                const rotated = this.currentPiece.shape[0].map((_, i) =>
+                    this.currentPiece.shape.map(row => row[i]).reverse()
+                );
+                if (this.canRotate(rotated)) {
+                    this.currentPiece.shape = rotated;
+                    console.log("Piece rotated");
+                }
+            }
+
+            canRotate(rotatedShape) {
+                for (let y = 0; y < rotatedShape.length; y++) {
+                    for (let x = 0; x < rotatedShape[y].length; x++) {
+                        if (rotatedShape[y][x]) {
+                            const newX = this.currentPiece.x + x;
+                            const newY = this.currentPiece.y + y;
+                            if (newX < 0 || newX >= this.gameManager.gridWidth || newY >= this.gameManager.gridHeight || (newY >= 0 && this.grid[newY][newX])) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            drop() {
+                while (this.canMove(0, 1)) {
+                    this.currentPiece.y++;
+                }
+                this.placePiece();
+                this.clearLines();
+                this.gameManager.switchMode();
+            }
+
+            canMove(offsetX, offsetY) {
+                for (let y = 0; y < this.currentPiece.shape.length; y++) {
+                    for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
+                        if (this.currentPiece.shape[y][x]) {
+                            const newX = this.currentPiece.x + x + offsetX;
+                            const newY = this.currentPiece.y + y + offsetY;
+                            if (newX < 0 || newX >= this.gameManager.gridWidth || newY >= this.gameManager.gridHeight || (newY >= 0 && this.grid[newY][newX])) {
+                                return false;
+                            }
+                        }
+                    }
+                }
+                return true;
+            }
+
+            placePiece() {
+                for (let y = 0; y < this.currentPiece.shape.length; y++) {
+                    for (let x = 0; x < this.currentPiece.shape[y].length; x++) {
+                        if (this.currentPiece.shape[y][x]) {
+                            this.grid[this.currentPiece.y + y][this.currentPiece.x + x] = this.currentPiece.color;
+                        }
+                    }
+                }
+                console.log("Piece placed");
+                this.clearLines();
+                this.generateNewPiece();
+            }
+
+            clearLines() {
+                let linesCleared = 0;
+                for (let y = this.grid.length - 1; y >= 0; y--) {
+                    if (this.grid[y].every(cell => cell !== 0)) {
+                        this.grid.splice(y, 1);
+                        this.grid.unshift(Array(this.gameManager.gridWidth).fill(0));
+                        linesCleared++;
+                        y++;
+                    }
+                }
+                if (linesCleared > 0) {
+                    console.log("Lines cleared:", linesCleared);
+                    this.gameManager.scoreboard.addTetrisScore(linesCleared * 10);
+                }
+                return linesCleared;
+            }
+        }
+
+        // scoreboard.js
+        class Scoreboard {
+            constructor() {
+                this.snakeScore = 0;
+                this.tetrisScore = 0;
+                this.snakeScoreElement = document.getElementById('snake-score');
+                this.tetrisScoreElement = document.getElementById('tetris-score');
+                this.totalScoreElement = document.getElementById('total-score');
+            }
+
+            addSnakeScore(points) {
+                this.snakeScore += points;
+                this.updateDisplay();
+            }
+
+            addTetrisScore(points) {
+                this.tetrisScore += points;
+                this.updateDisplay();
+            }
+
+            updateDisplay() {
+                if (this.snakeScoreElement) this.snakeScoreElement.textContent = this.snakeScore;
+                if (this.tetrisScoreElement) this.tetrisScoreElement.textContent = this.tetrisScore;
+                if (this.totalScoreElement) this.totalScoreElement.textContent = this.snakeScore + this.tetrisScore;
+            }
+
+            reset() {
+                this.snakeScore = 0;
+                this.tetrisScore = 0;
+                this.updateDisplay();
+            }
+        }
+
+        // render.js
+        class Render {
+            constructor(gameManager) {
+                this.gameManager = gameManager;
+            }
+
+            draw() {
+                const { ctx, canvas, gridSize, currentMode, snake, tetris, fruit, gridWidth, gridHeight } = this.gameManager;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (currentMode === 'snake') {
+                    this.drawSnake(snake);
+                    this.drawFruit(fruit);
+                } else {
+                    this.drawTetris(tetris);
+                }
+
+                ctx.fillStyle = 'black';
+                ctx.font = '20px Arial';
+                ctx.fillText(`速度: ${this.gameManager.speed.toFixed(1)}x`, 10, 30);
+            }
+
+            drawSnake(snake) {
+                const { ctx, gridSize } = this.gameManager;
+                ctx.fillStyle = 'green';
+                snake.body.forEach(segment => {
+                    ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+                });
+            }
+
+            drawFruit(fruit) {
+                if (!fruit) {
+                    console.log("No fruit to draw");
+                    return;
+                }
+                const { ctx, gridSize } = this.gameManager;
+                ctx.fillStyle = 'red';
+                ctx.fillRect(fruit.x * gridSize, fruit.y * gridSize, gridSize, gridSize);
+                console.log("Fruit drawn at:", fruit);
+            }
+
+            drawTetris(tetris) {
+                const { ctx, gridSize, gridWidth, gridHeight } = this.gameManager;
+                tetris.grid.forEach((row, y) => {
+                    row.forEach((color, x) => {
+                        if (color) {
+                            ctx.fillStyle = color;
+                            ctx.fillRect(x * gridSize, y * gridSize, gridSize, gridSize);
+                        }
+                    });
+                });
+
+                if (tetris.currentPiece) {
+                    ctx.fillStyle = tetris.currentPiece.color;
+                    tetris.currentPiece.shape.forEach((row, y) => {
+                        row.forEach((cell, x) => {
+                            if (cell) {
+                                ctx.fillRect(
+                                    (tetris.currentPiece.x + x) * gridSize,
+                                    (tetris.currentPiece.y + y) * gridSize,
+                                    gridSize,
+                                    gridSize
+                                );
+                            }
+                        });
+                    });
+                }
+            }
+        }
+
+        // inputHandler.js
+        class InputHandler {
+            constructor(gameManager) {
+                this.gameManager = gameManager;
+                document.addEventListener('keydown', this.handleKeyPress.bind(this));
+                console.log("InputHandler initialized");
+            }
+
+            handleKeyPress(event) {
+                console.log("Key pressed:", event.key);
+                if (this.gameManager.currentMode === 'snake') {
+                    switch (event.key) {
+                        case 'ArrowUp':
+                            this.gameManager.snake.changeDirection('up');
+                            break;
+                        case 'ArrowDown':
+                            this.gameManager.snake.changeDirection('down');
+                            break;
+                        case 'ArrowLeft':
+                            this.gameManager.snake.changeDirection('left');
+                            break;
+                        case 'ArrowRight':
+                            this.gameManager.snake.changeDirection('right');
+                            break;
+                    }
+                } else if (this.gameManager.currentMode === 'tetris') {
+                    switch (event.key) {
+                        case 'ArrowUp':
+                            this.gameManager.tetris.rotate();
+                            break;
+                        case 'ArrowDown':
+                            this.gameManager.tetris.moveDown();
+                            this.gameManager.scoreboard.addTetrisScore(1);
+                            break;
+                        case 'ArrowLeft':
+                            this.gameManager.tetris.moveLeft();
+                            break;
+                        case 'ArrowRight':
+                            this.gameManager.tetris.moveRight();
+                            break;
+                        case ' ':
+                            this.gameManager.tetris.drop();
+                            this.gameManager.scoreboard.addTetrisScore(5);
+                            break;
+                    }
+                }
+                event.preventDefault();
+            }
+        }
+
+        // gameManager.js
+        class GameManager {
+            constructor() {
+                this.canvas = document.getElementById('game-canvas');
+                if (!this.canvas) {
+                    console.error("Canvas element not found!");
+                    return;
+                }
+                this.ctx = this.canvas.getContext('2d');
+                this.gridSize = 20;
+                this.gridWidth = Math.floor(this.canvas.width / this.gridSize);
+                this.gridHeight = Math.floor(this.canvas.height / this.gridSize);
+                this.snake = new Snake(this);
+                this.tetris = new Tetris(this);
+                this.render = new Render(this);
+                this.scoreboard = new Scoreboard();
+                this.inputHandler = new InputHandler(this);
+                this.currentMode = 'snake';
+                this.speed = 1;
+                this.initialSpeed = 1;
+                this.lastUpdateTime = 0;
+                this.fruit = null;
+                this.snakeMoveInterval = 200;
+                this.lastSnakeMoveTime = 0;
+                this.setupSpeedControl();
+                this.generateFruit();
+                console.log("GameManager initialized");
+                this.isGameOver = false;
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'r' || e.key === 'R') {
+                        this.restart();
+                    }
+                });
+            }
+
+            setupSpeedControl() {
+                const speedSelect = document.getElementById('speed-select');
+                if (speedSelect) {
+                    speedSelect.addEventListener('change', (e) => {
+                        this.speed = parseFloat(e.target.value);
+                        console.log("Speed changed to:", this.speed);
+                    });
+                } else {
+                    console.warn("Speed select element not found.");
+                }
+            }
+
+            start() {
+                console.log("Game started");
+                this.isGameOver = false;
+                this.generateFruit();
+                this.lastUpdateTime = performance.now();
+                this.render.draw();
+                requestAnimationFrame(this.gameLoop.bind(this));
+            }
+
+            gameLoop(currentTime) {
+                if (this.isGameOver) return;
+                const deltaTime = currentTime - this.lastUpdateTime;
+                console.log(`Game loop: mode=${this.currentMode}, deltaTime=${deltaTime}`);
+                this.update(deltaTime);
+                this.render.draw();
+                this.lastUpdateTime = currentTime;
+                requestAnimationFrame(this.gameLoop.bind(this));
+            }
+
+            update(deltaTime) {
+                if (this.currentMode === 'snake') {
+                    this.snake.update(deltaTime);
+                } else {
+                    this.tetris.update(deltaTime);
+                }
+            }
+
+            switchMode() {
+                if (this.currentMode === 'snake') {
+                    this.currentMode = 'tetris';
+                    this.tetris.generateNewPiece();
+                } else {
+                    this.currentMode = 'snake';
+                    this.generateFruit();
+                }
+                console.log("Switched mode to:", this.currentMode);
+            }
+
+            gameOver() {
+                this.isGameOver = true;
+                console.log("Game Over");
+            }
+
+            restart() {
+                this.snake.reset();
+                this.tetris.reset();
+                this.scoreboard.reset();
+                this.currentMode = 'snake';
+                this.generateFruit();
+                this.isGameOver = false;
+                this.start();
+            }
+
+            generateFruit() {
+                const x = Math.floor(Math.random() * this.gridWidth);
+                const maxY = Math.floor(this.gridHeight / 2 - 3);
+                const y = Math.floor(Math.random() * maxY);
+                this.fruit = { x, y };
+                console.log("Fruit generated at:", this.fruit);
+                return this.fruit;
+            }
+        }
+
+        window.addEventListener('load', () => {
+            const game = new GameManager();
+            game.start();
+        });
+    </script>
+</body>
+</html>
+
+
