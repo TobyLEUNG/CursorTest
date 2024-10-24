@@ -1,3 +1,168 @@
+# Game Design Requirements Document
+
+## Overview
+
+This game combines the classic **Snake** and **Tetris**, aiming to provide players with a unique and challenging experience. The design focuses on high modularity for ease of development, maintenance, and expansion, ensuring low coupling between modules to avoid interference and integration issues.
+
+## Game Flow
+
+1. **Start Game**: The game begins in Snake mode, with the snake moving in a fixed area to find fruits.
+2. **Mode Switch**: When the snake eats a fruit, it transforms into a Tetris block, switching to Tetris mode.
+3. **Control Tetris Block**: Players can move the block left, right, down, and rotate it.
+4. **Line Clearing**: When the block hits the bottom or fills a line, the line is cleared, and the game switches back to Snake mode.
+5. **Restart Game**: Players can press **R** to restart the game, resetting all scores and states.
+
+## Module Breakdown
+
+To achieve high modularity, the game is divided into the following main modules, each responsible for specific functions and interacting through clear interfaces:
+
+### 1. Main Page Module (`index.html`)
+
+- **Responsibilities**:
+  - Provides the basic framework and structure of the game.
+  - Includes all necessary HTML elements like canvas, control panel, and scoreboard.
+  - Imports all JavaScript and CSS files.
+
+- **Design Points**:
+  - **Scalability**: Structure should allow easy addition or removal of modules.
+  - **No Business Logic**: Only responsible for presentation and basic structure, no game logic.
+
+### 2. Game Manager Module (`gameManager.js`)
+
+- **Responsibilities**:
+  - Manages the overall state and flow of the game, including mode switching, game start, and restart.
+  - Coordinates interactions between modules.
+
+- **Interfaces**:
+  - Initializes all other modules.
+  - Provides methods to switch game modes.
+  - Manages game loop and update mechanism.
+
+- **Design Points**:
+  - **Single Responsibility Principle**: Only responsible for game flow and state management, not specific game logic.
+  - **Low Coupling**: Interacts with other modules through interfaces, avoiding direct dependencies.
+
+### 3. Snake Module (`snake.js`)
+
+- **Responsibilities**:
+  - Manages the snake's behavior, such as movement, growth, and collision detection.
+  - Handles interactions with fruits.
+
+- **Interfaces**:
+  - Provides methods to control the snake's direction and movement.
+  - Notifies the game manager module when the snake eats a fruit.
+
+- **Design Points**:
+  - **Reusability**: Independent of the game manager module, can be reused in other contexts.
+  - **Encapsulation**: Internal state and methods are not exposed, interacting only through public interfaces.
+
+### 4. Tetris Module (`tetris.js`)
+
+- **Responsibilities**:
+  - Manages the generation, movement, rotation, and line clearing of blocks.
+  - Handles collision detection with the game area.
+
+- **Interfaces**:
+  - Provides methods to control block movement and rotation.
+  - Notifies the game manager module when a line is cleared or a block is fixed.
+
+- **Design Points**:
+  - **Single Responsibility**: Focuses on block behavior and logic, not other game elements.
+  - **High Cohesion**: All block-related functions are concentrated within this module.
+
+### 5. Render Module (`render.js`)
+
+- **Responsibilities**:
+  - Renders the game state onto the HTML canvas.
+  - Draws game elements based on the current mode (Snake or Tetris).
+
+- **Interfaces**:
+  - Provides rendering methods, receiving the current game state from the game manager module.
+  - Subscribes to game state changes for real-time updates.
+
+- **Design Points**:
+  - **No Business Logic**: Only responsible for visual presentation, separate from game logic.
+  - **Flexibility**: Easy to adjust rendering methods or add new visual effects.
+
+### 6. Scoreboard Module (`scoreboard.js`)
+
+- **Responsibilities**:
+  - Manages and displays various scores in the game, including Snake score, Tetris score, and total score.
+  - Provides methods to update and reset scores.
+
+- **Interfaces**:
+  - Provides methods to increase different types of scores.
+  - Provides methods to reset scores.
+
+- **Design Points**:
+  - **Data-Driven**: All score calculations and storage are handled within this module.
+  - **Visual Separation**: Only responsible for score management and display, not other game logic.
+
+### 7. Input Handler Module (`inputHandler.js`)
+
+- **Responsibilities**:
+  - Listens to and processes player keyboard inputs.
+  - Converts inputs into game actions, such as snake movement or block control.
+
+- **Interfaces**:
+  - Calls control methods of the Snake or Tetris module based on the current game mode.
+
+- **Design Points**:
+  - **Decoupling**: Does not directly operate game modules, but controls them through the game manager module.
+  - **Extensibility**: Easy to add new input methods or modify existing control methods.
+
+### 8. Utility Module (`utility.js`)
+
+- **Responsibilities**:
+  - Provides general functions needed in the game, such as random number generators and deep copy.
+
+- **Interfaces**:
+  - Provides static methods for other modules to call.
+
+- **Design Points**:
+  - **Highly General**: Functions should be unrelated to specific game logic and reusable across different modules.
+  - **Stateless**: Only provides utility methods, does not store any state.
+
+## Module Interactions
+
+- **Game Manager Module** acts as the core, initializing and coordinating all modules.
+- **Input Handler Module** receives player inputs and forwards them to the appropriate game module through the game manager module.
+- **Snake Module** and **Tetris Module** manage their respective game logic and switch modes through the game manager module.
+- **Render Module** periodically gets the current game state from the game manager module and updates the display.
+- **Scoreboard Module** updates and displays scores based on notifications from game modules.
+- **Utility Module** provides necessary auxiliary functions for other modules.
+
+## Development and Testing Strategy
+
+- **Unit Testing**: Write individual tests for each module to ensure their functionality.
+- **Integration Testing**: Test interactions between modules to ensure interfaces work correctly.
+- **Continuous Integration**: Use CI tools to automatically run tests and check code quality.
+- **Code Review**: Regularly review code to ensure it meets design specifications and maintains consistency.
+
+## Measures to Avoid Interference and Integration Issues
+
+1. **Clear Interface Definitions**:
+   - Each module should interact only through public methods and events, avoiding direct access to internal states.
+   
+2. **Low Coupling**:
+   - Minimize dependencies between modules, using the game manager module for indirect communication.
+   
+3. **High Cohesion**:
+   - Each module should focus on its own responsibilities, avoiding unnecessary functions.
+   
+4. **Event-Driven Mechanism**:
+   - Use events to trigger interactions between modules, reducing direct method calls and increasing flexibility.
+   
+5. **Version Control and Dependency Management**:
+   - Use version control systems to manage code changes and clearly define dependencies between modules.
+   
+6. **Documentation and Code Comments**:
+   - Write clear documentation for each module and its interfaces to facilitate understanding and maintenance.
+
+## Summary
+
+By designing the game with a highly modular structure, each module has clear responsibilities and low coupling, facilitating development and maintenance while effectively avoiding interference and integration issues. Future feature expansions can be easily implemented on the existing architecture, ensuring sustainable development and high quality of the game.
+
 # 遊戲設計需求文件
 
 ## 概述
